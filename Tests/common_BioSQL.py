@@ -10,6 +10,10 @@ import platform
 import unittest
 import tempfile
 import time
+try:
+    import configparser  # Python 3
+except ImportError:
+    import ConfigParser as configparser  # Python 2
 
 from Bio._py3k import StringIO
 from Bio._py3k import zip
@@ -42,7 +46,24 @@ if __name__ == "__main__":
 SYSTEM = platform.system()
 
 
+def load_biosql_ini(DBTYPE):
+    """Load the database settings from INI file."""
+    if not os.path.isfile("biosql.ini"):
+        raise MissingExternalDependencyError("BioSQL test configuration"
+                                             " file biosql.ini missing"
+                                             " (see biosql.ini.sample)")
+
+    config = configparser.ConfigParser()
+    config.read("biosql.ini")
+    DBHOST = config.get(DBTYPE, "dbhost")
+    DBUSER = config.get(DBTYPE, "dbuser")
+    DBPASSWD = config.get(DBTYPE, "dbpasswd")
+    TESTDB = config.get(DBTYPE, "testdb")
+    return DBHOST, DBUSER, DBPASSWD, TESTDB
+
+
 def temp_db_filename():
+    """Generate a temporary filename for SQLite database."""
     # In memory SQLite does not work with current test structure since the tests
     # expect databases to be retained between individual tests.
     # TESTDB = ':memory:'
@@ -57,6 +78,7 @@ def temp_db_filename():
 
 
 def check_config(dbdriver, dbtype, dbhost, dbuser, dbpasswd, testdb):
+    """Verify the database settings work for connecting."""
     global DBDRIVER, DBTYPE, DBHOST, DBUSER, DBPASSWD, TESTDB, DBSCHEMA
     global SYSTEM, SQL_FILE
     DBDRIVER = dbdriver
@@ -148,7 +170,7 @@ def _do_db_create():
 
 
 def create_database():
-    """Delete any existing BioSQL test database, then (re)create an empty BioSQL database."""
+    """Delete any existing BioSQL test DB, then (re)create an empty BioSQL DB."""
     if DBDRIVER in ["sqlite3"]:
         global TESTDB
         if os.path.exists(TESTDB):
